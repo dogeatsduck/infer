@@ -7,7 +7,6 @@ import shlex
 import subprocess
 from contextlib import suppress
 from urllib.parse import urlparse, parse_qs
-
 import gradio as gr
 import librosa
 import numpy as np
@@ -298,8 +297,6 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
 
         ai_vocals_path = os.path.join(song_dir, f'{voice_model} clear {song_name}_p{pitch_change}_i{index_rate}_fr{filter_radius}_rms{rms_mix_rate}_pro{protect}_{f0_method}{"" if f0_method != "mangio-crepe" else f"_{crepe_hop_length}"}.wav')
         ai_cover_path = os.path.join(song_dir, f'{voice_model} mixed {song_name}.{output_format}')
-        print(ai_vocals_path, ai_cover_path)
-
 
         display_progress('[~] Converting voice using RVC...', 0.5, is_webui, progress)
         voice_change(voice_model, main_vocals_dereverb_path, ai_vocals_path, pitch_change, f0_method, index_rate, filter_radius, rms_mix_rate, protect, crepe_hop_length, is_webui)
@@ -323,7 +320,6 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
             for file in intermediate_files:
                 if file and os.path.exists(file):
                     os.remove(file)
-
         return ai_cover_path
 
     except Exception as e:
