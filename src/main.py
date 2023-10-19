@@ -88,6 +88,8 @@ def get_rvc_model(voice_model, is_webui):
     for file in os.listdir(model_dir):
         ext = os.path.splitext(file)[1]
         if ext == '.pth':
+            if 'D_' in file or "G_" in file:
+                continue
             rvc_model_filename = file
         if ext == '.index':
             rvc_index_filename = file
@@ -160,7 +162,7 @@ def display_progress(message, percent, is_webui, progress=None):
         print(message)
 
 
-def preprocess_song(song_input, mdx_model_params, song_id, is_webui, input_type, progress=None, use_uvr5=False):
+def preprocess_song(song_input, mdx_model_params, song_id, is_webui, input_type, progress=None, use_uvr5=None):
     keep_orig = False
     if input_type == 'yt':
         display_progress('[~] Downloading song...', 0, is_webui, progress)
@@ -173,8 +175,8 @@ def preprocess_song(song_input, mdx_model_params, song_id, is_webui, input_type,
         orig_song_path = None
     
     song_output_dir = os.path.join(output_dir, song_id)
-
-    if use_uvr5 == True:
+    print(use_uvr5)
+    if use_uvr5 == 'yes':
         orig_song_path = convert_to_stereo(orig_song_path)
     
         display_progress('[~] Separating Vocals from Instrumental...', 0.1, is_webui, progress)
@@ -244,7 +246,7 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
                         is_webui=0, main_gain=0, backup_gain=0, inst_gain=0, index_rate=0.5, filter_radius=3,
                         rms_mix_rate=0.25, f0_method='rmvpe', crepe_hop_length=128, protect=0.33, pitch_change_all=0,
                         reverb_rm_size=0.15, reverb_wet=0.2, reverb_dry=0.8, reverb_damping=0.7, output_format='mp3',
-                        progress=gr.Progress(), use_uvr5=False):
+                        progress=gr.Progress(), use_uvr5=None):
     try:
         if not song_input or not voice_model:
             raise_exception('Ensure that the song input field and voice model field is filled.', is_webui)
@@ -351,6 +353,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     rvc_dirname = args.rvc_dirname
+
     if not os.path.exists(os.path.join(rvc_models_dir, rvc_dirname)):
         raise Exception(f'The folder {os.path.join(rvc_models_dir, rvc_dirname)} does not exist.')
     cover_path = song_cover_pipeline(args.song_input, rvc_dirname, args.pitch_change, args.keep_files,
