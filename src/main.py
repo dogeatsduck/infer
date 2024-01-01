@@ -242,7 +242,7 @@ def combine_audio(audio_paths, output_path, main_gain, backup_gain, inst_gain, o
     main_vocal_audio.overlay(backup_vocal_audio).overlay(instrumental_audio).export(output_path, format=output_format)
 
 
-def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
+def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files, out_dir, 
                         is_webui=0, main_gain=0, backup_gain=0, inst_gain=0, index_rate=0.5, filter_radius=3,
                         rms_mix_rate=0.25, f0_method='rmvpe', crepe_hop_length=128, protect=0.33, pitch_change_all=0,
                         reverb_rm_size=0.15, reverb_wet=0.2, reverb_dry=0.8, reverb_damping=0.7, output_format='mp3',
@@ -297,22 +297,29 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
         print(voice_model)
         
 
-        ai_vocals_path = os.path.join(song_dir, f'{voice_model} clear {song_name}_p{pitch_change}_i{index_rate}_fr{filter_radius}_rms{rms_mix_rate}_pro{protect}_{f0_method}{"" if f0_method != "mangio-crepe" else f"_{crepe_hop_length}"}.wav')
-        ai_cover_path = os.path.join(song_dir, f'{voice_model} mixed {song_name}.{output_format}')
+        ai_vocals_path = os.path.join(out_dir, f'{song_name}.wav')
+        if use_uvr5 == 'yes':
+            ai_cover_path = os.path.join(out_dir, f'mixed {song_name}.{output_format}')
+        else:
+            ai_cover_path = None
 
         display_progress('[~] Converting voice using RVC...', 0.5, is_webui, progress)
         voice_change(voice_model, main_vocals_dereverb_path, ai_vocals_path, pitch_change, f0_method, index_rate, filter_radius, rms_mix_rate, protect, crepe_hop_length, is_webui)
 
-        display_progress('[~] Applying audio effects to Vocals...', 0.8, is_webui, progress)
-        ai_vocals_mixed_path = add_audio_effects(ai_vocals_path, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping)
+        if use_uvr5 == 'yes':
+            display_progress('[~] Applying audio effects to Vocals...', 0.8, is_webui, progress)
+            ai_vocals_mixed_path = add_audio_effects(ai_vocals_path, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping)
+        else:
+            ai_vocals_mixed_path = None
 
         if pitch_change_all != 0:
             display_progress('[~] Applying overall pitch change', 0.85, is_webui, progress)
             instrumentals_path = pitch_shift(instrumentals_path, pitch_change_all)
             backup_vocals_path = pitch_shift(backup_vocals_path, pitch_change_all)
 
-        display_progress('[~] Combining AI Vocals and Instrumentals...', 0.9, is_webui, progress)
-        combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path, main_gain, backup_gain, inst_gain, output_format)
+        if use_uvr5 == 'yes':
+            display_progress('[~] Combining AI Vocals and Instrumentals...', 0.9, is_webui, progress)
+            combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path, main_gain, backup_gain, inst_gain, output_format)
 
         if not keep_files:
             display_progress('[~] Removing intermediate audio files...', 0.95, is_webui, progress)
@@ -322,7 +329,12 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
             for file in intermediate_files:
                 if file and os.path.exists(file):
                     os.remove(file)
-        return ai_cover_path
+        
+        if ai_cover_path == None:
+            return ai_vocals_path
+
+        else:
+            return ai_cover_path
 
     except Exception as e:
         raise_exception(str(e), is_webui)
@@ -350,6 +362,7 @@ if __name__ == '__main__':
     parser.add_argument('-rdamp', '--reverb-damping', type=float, default=0.7, help='Reverb damping between 0 and 1')
     parser.add_argument('-oformat', '--output-format', type=str, default='mp3', help='Output format of audio file. mp3 for smaller file size, wav for best quality')
     parser.add_argument('-inst', '--seperate-instrument', type=str, default="False", help='Seperate voice from song')
+    parser.add_argument('-out_dir', '--output-directory', type=str, default="/content/drive/MyDrive/audio/output/", help='bruh')
     args = parser.parse_args()
 
     rvc_dirname = args.rvc_dirname
@@ -364,5 +377,5 @@ if __name__ == '__main__':
                                      pitch_change_all=args.pitch_change_all,
                                      reverb_rm_size=args.reverb_size, reverb_wet=args.reverb_wetness,
                                      reverb_dry=args.reverb_dryness, reverb_damping=args.reverb_damping,
-                                     output_format=args.output_format, use_uvr5=args.seperate_instrument)
+                                     output_format=args.output_format, out_dir=args.output_directory, use_uvr5=args.seperate_instrument)
     print(f'[+] Cover generated at {cover_path}')
